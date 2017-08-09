@@ -1,5 +1,5 @@
 function superBallUpdate(vec, superBall1, superBallDynamicsPlot1,tspan1, ...
-    barlength1, nodalmass1)
+    barlength1, nodalmass1, hebiControl)
 % Display update function for tensegrity simulation.
 global stringTensionDatastore;
 global stringTensionCmdDataStore;
@@ -8,7 +8,7 @@ global actualLenCmdLenDataStore;
 global HH;
 
 %create some persistent variables for objects and structs
-persistent superBall superBallDynamicsPlot tspan barlen baselen alpha_i delta_i nit nodalmass isPacking
+persistent superBall superBallDynamicsPlot tspan barlen baselen alpha_i delta_i nit nodalmass isPacking controlRobot
 
 if nargin>1
     delta_i = vec(1);
@@ -22,6 +22,8 @@ if nargin>1
     tspan = tspan1;
     barlen = barlength1;
     nodalmass = nodalmass1;
+    
+    controlRobot = hebiControl;
     
     % Clear datastores
     stringTensionDatastore = [];
@@ -87,7 +89,7 @@ Td=10;
 
 
 % Deployment from Star Packing:
-% delta = max(55/180*pi, delta_i + time/Td*(55/180*pi-delta_i))
+% delta = max(55/180*pi, delta_i + time/Td*(55/180*pi-delta_i));
 % alpha = 60/180*pi;
 % b = baselen;
 
@@ -286,5 +288,44 @@ stringTensionDatastore = [stringTensionDatastore; T_actual'];
 stringTensionCmdDataStore = [stringTensionCmdDataStore; T_cmd'];
 restLenDataStore = [restLenDataStore; restlens'];
 actualLenCmdLenDataStore = [actualLenCmdLenDataStore; lengths(1:s)'];
+
+% Robot Control, Assumes Hebi initialization has already been done
+if controlRobot
+    % Hack to get nodes from sim and robot aligned. Should change sim to match
+    % robot...
+    SBtransform = [
+        19 20 21 15 8 2 14 9 4 13 7 6 1 18 12 3 17 11 5 16 10 23 24 22;
+        18 3 13 22 4 15 7 14 20 9 17 1 21 2 11 8 16 24 10 19 5 12 23 6 
+        ];
+    [v,i]=sort(SBtransform(1,:));
+    SBtransformSort = SBtransform(:,i);
+
+    % Stiffness and Cable Gains for Conversion (Should replace with calibration
+    % done by Jeff
+    stiffness = 6000.0;
+    linearCoff = -0.73;
+    offset = 100.2;
+
+    % convert sim data to robot data
+    current_lengths = lengths(1:s);
+    current_tensions = T_actual;
+
+    current_tensions(current_tensions > 200.0) = 200.0;
+
+    current_restLengths = current_lengths - (current_tensions/stiffness);
+
+    newRestLengths(SBtransformSort(2,:)) = current_restLengths;
+
+    cmdMotorPositions = ((100*newRestLengths) - offset) / linearCoff;
+
+    % send commands to motor
+    for stupid=1:1
+    %     impFbk = impGroup.getNextFeedback(tempFbk); 
+    %    impCmd.position = cmdMotorPositions;
+    %    impGroup.send(impCmd);
+        pause(0.01)
+    end
+end
+
 end
 

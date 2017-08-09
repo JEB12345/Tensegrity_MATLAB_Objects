@@ -22,6 +22,9 @@ stringStiffness = K*ones(24,1);
 barStiffness = 10000e3*ones(6,1);
 stringDamping = c*ones(24,1);  %string damping vector
 
+% Enable Controlling the Robot in parallel with simulation code
+controlRobot = true;
+
 addpath('../tensegrityObjects'); % Note forward slash means *nix OS.
 
 % Define SUPERball nodes using Sultan's ordering:
@@ -115,7 +118,7 @@ calls.makeSlider(f,2*475,0,@(val) updateVal(calls,val,3),[0, barLength],b,'basel
 %some persistent objects/structures (all the items after the ... on the second
 %line) this speeds things up since less memory is passed to the function
 % each call see the actual function for more details
-superBallUpdate(vec, superBall, superBallDynamicsPlot, tspan, barLength, nodalMass(1));
+superBallUpdate(vec, superBall, superBallDynamicsPlot, tspan, barLength, nodalMass(1), controlRobot);
 
 %Create a function handle which only passes the vector of values we will be
 %updating
